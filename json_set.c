@@ -7,7 +7,7 @@
 void insert(char *str, char *pch, int pos); 
 static int jsoneq(const char *json, jsmntok_t *tok, const char *s);
 
-
+static int isdigitstr(char *str){return (strspn(str, "0123456789")==strlen(str));}
 void json_set(char json[], ...)
 {
     va_list valist;
@@ -41,9 +41,11 @@ void json_set(char json[], ...)
     strcat(newitem, key);
     strcat(newitem, "\"");
     strcat(newitem, ":");
-    strcat(newitem, "\"");
+    if(!isdigitstr(value) && strcmp(value, "true")!=0)
+    	strcat(newitem, "\"");
     strcat(newitem, value);
-    strcat(newitem, "\"");
+    if(!isdigitstr(value) && strcmp(value, "true")!=0)
+    	strcat(newitem, "\"");
     //strcat(newitem, "}");
     //strcat(newitem, "\0");
 	
@@ -140,15 +142,26 @@ void json_set(char json[], ...)
 int main()
 {
 	
-    char json[500] = "{\"a\":{\"a\":\"aa\", \"b\":{\"c\":\"ccc\"}, \"c\":[\"c1\", \"c2\"]}, \"b\":[22, 33], \"c\":{\"d\":\"ddd\"}}";
+    char jsons[500] = "{\"a\":{\"a\":\"aa\", \"b\":{\"c\":\"ccc\"}, \"c\":[\"c1\", \"c2\"]}, \"b\":[22, 33], \"c\":{\"d\":\"ddd\"}}";
     
 
 	char j[200] = "{}";
 	
     //json_set(json, "a", "b", "k", "vvvvvvvvvvvv", "");
-    json_set(j, "a", "e", "k", "vvvvvvvvvvvv", "");
-    //json_set(json, "k", "vvvvvvvvvvvv", "");
+    //json_set(j, "a", "e", "k", "vvvvvvvvvvvv", "");
     //json_set(json, "m", "n", "k", "vvvvvvvvvvvv", "");
+    //json_set(json, "m", "n", "l", "vvvvvvvvvvvv", "");
+    //json_set(json, "m", "m", "s", "vvvvvvvvvvvv", "");
+    //json_set(json, "m", "m", "w", "vvvvvvvvvvvv", "");
+	
+	
+	           char json[100] = "{}";
+
+        	json_set(json, "status", "200", "");
+
+        	json_set(json, "nonce", "23423423", "");
+        	json_set(json, "deliver_to_device", "true", "");
+        	json_set(json, "datapoint", "x", "1", "");
 
     //if(t.start!=0 && t.end!=0)
         //printf("eeee%.*s\n", t.end-t.start, json + t.start);
