@@ -8,32 +8,23 @@ void insert(char *str, char *pch, int pos);
 static int jsoneq(const char *json, jsmntok_t *tok, const char *s);
 
 
-char* json_set(char* json, ...)
+void json_set(char json[], ...)
 {
     va_list valist;
     jsmn_parser parser;
-    jsmntok_t t[50];
-    jsmntok_t token;
+    jsmntok_t t[500];
     int args_num=0;
-
-    static char backJson[500] = {'\0'};
-
-
-    strcpy(backJson, json);
-
-    memset(&token, 0, sizeof(token));
-
-
-    jsmn_init(&parser);
-    int item_number = jsmn_parse(&parser, json, strlen(json), t, 50);
-
-    
-    printf("\n%d\n\n", item_number);
-
-    va_start(valist, json);
+	char* parent;
     char* key;
     char* value;
     char* tmp;
+	
+	
+    jsmn_init(&parser);
+    int item_number = jsmn_parse(&parser, json, strlen(json), t, 500);
+
+    printf("\nitem_number: %d\n", item_number);
+    va_start(valist, json);
     while(1){
         value = tmp;
         tmp = va_arg(valist, char*);
@@ -42,13 +33,11 @@ char* json_set(char* json, ...)
         }args_num++;
         key = value;
     }
-
-    printf("\nkey:%s, val:%s, tmp:%s\n", key, value, tmp);
-
-    char newitem[50];
-    strcpy(newitem, ",");
-
-    strcat(newitem, "\"");
+	
+    char additem[20];
+    char newitem[100];
+    //strcpy(newitem, ",");
+    strcpy(newitem, "\"");
     strcat(newitem, key);
     strcat(newitem, "\"");
     strcat(newitem, ":");
@@ -57,85 +46,92 @@ char* json_set(char* json, ...)
     strcat(newitem, "\"");
     //strcat(newitem, "}");
     //strcat(newitem, "\0");
+	
 
+	args_num = args_num - 2;
+	
 
-    args_num = args_num - 2;
+	if(0 == args_num){
+		if(0 != t[0].size)
+			insert(newitem, ",", 0); 
+		insert(json, newitem, t[0].end-1); 
+	}
+	
+		int itemIndex = 0;
+	int itemStartPosition = 0;
+	int itemEndPosition = strlen(json);
+	int break_tag = 0;
+	
+	
+	JUMP_HERE:
+	itemIndex = 0;
+	itemStartPosition = 0;
+	itemEndPosition = strlen(json);
+	    jsmn_init(&parser);
 
-    if(args_num == 0){
-        insert(backJson, newitem, t[0].end-1); 
-        printf("\n%s\n", backJson);
-        va_end(valist);
-        return backJson;
-    }
-
+	item_number = jsmn_parse(&parser, json, strlen(json), t, 500);
+	//break_tag = 0;
     va_start(valist, json);
-    printf("\nargs_num:%d\n", args_num);
+	for(int p=0; p<args_num; p++){
+		break_tag = 0;
+		parent = va_arg(valist, char*);
+		
+		for(int i=itemIndex; i<item_number; i++){
+			itemIndex = i;
+			if(t[i].start <= itemStartPosition){
+				printf("start index %d\n", itemIndex);
+			}else
+			if(t[i].start >= itemEndPosition){
+				printf("End index %d\n", itemIndex);
+			}else
+			if(jsoneq(json, &t[i], parent) == 0){  //into
+				printf("\nfound parent-%s\n", parent);
+				itemStartPosition = t[i+1].start;
+				itemEndPosition = t[i+1].end;
+				if(p == args_num-1){
+					if(0 != t[i+1].size)
+						insert(newitem, ",", 0); 
+					insert(json, newitem, t[i+1].end-1); 
+						printf("\n%s\n", json);
 
-    int itemIndex=0;
-    int itemPosition=0;
-    for(int n=0; n<args_num; n++){
-        char* a = va_arg(valist, char*);
-        for(int i=itemIndex; i<item_number; i++){
-            printf("\nitem: %d--%d", i, n);
-            if(t[i].start < itemPosition){
-                printf("\n%d--%d\n", i, n);
-                continue;
-            }
-
-
-            if(t[i+1].type == JSMN_OBJECT){
-                printf(" find object\n");
-                if(jsoneq(backJson, &t[i], a) == 0){
-                    if(n == args_num - 1){ //the last layer
-
-                        insert(backJson, newitem, t[i+1].end-1); 
-                        va_end(valist);
-
-                        printf("\n%s\n", backJson);
-                        return backJson;
-                    }
-                    
-                    itemPosition = t[i+1].start;
-                    itemIndex = i;
-
-                    printf(" \nnot this\n");
-                    break;
-
-                }else{
-                    itemPosition = t[i+1].end;
-                    
-                    printf("\nitemPosition:%d\n", itemPosition);
-                itemIndex = i;
-                continue;
-                }
-            }else
-            if(t[i+1].type == JSMN_ARRAY){
-            }else{
-
-                printf("%s\n", a);
-                printf("%.*s\n", t[i].end-t[i].start, json + t[i].start);
-                if(jsoneq(backJson, &t[i], a) == 0){
-                    printf("dddddddddd");
-
-                    
-                    //insert(backJson, a, t[i+1].end); 
-
-                    
-                    printf("\n%s\n", backJson);
-                    //printf("%.*s\n", t[i+1].end-t[i+1].start, json + t[i+1].start);
-                    va_end(valist);
-                }
-            }
+					return;
+				}
+				//if(break_tag)return;
+				break_tag = 1;
+				break;
+			}else{
+				itemStartPosition = t[i+1].end;
+			}
+		}
 
 
-        }
+		if(!break_tag){  //first parent add
+			printf("out index %d\n", t[itemIndex-1].end-t[itemIndex-1].start);
+			
+			
+			//printf("- User: %.*s\n", 2,json + t[itemIndex].end-2);
+			
+							//printf("\n%s\n", json);
 
+			if(json[t[itemIndex].end-2] == '{' || json[t[itemIndex].end-2] == '[')
+				sprintf(additem, "\"%s\":{}", parent);
+			else
+				sprintf(additem, ",\"%s\":{}", parent);
+			printf("%s\n", additem);
+			
+			insert(json, additem, itemEndPosition-1); 
+				printf("\n%s\n", json);
+				goto JUMP_HERE;
+		}
+	
+		
+	}
 
-    }
-
-
+	
+	
     va_end(valist);
-    return backJson;
+	printf("\n%s\n", json);
+
 }
 
 
@@ -143,12 +139,16 @@ char* json_set(char* json, ...)
 
 int main()
 {
-    char* json = "{\"a\":{\"a\":\"aa\", \"b\":{\"c\":\"ccc\"}, \"c\":[\"c1\", \"c2\"]}, \"b\":[22, 33], \"c\":{\"d\":\"ddd\"}}";
+	
+    char json[500] = "{\"a\":{\"a\":\"aa\", \"b\":{\"c\":\"ccc\"}, \"c\":[\"c1\", \"c2\"]}, \"b\":[22, 33], \"c\":{\"d\":\"ddd\"}}";
     
-    //printf("%s", json);
 
-
-    printf("\n%s\n", json_set(json, "a", "k", "v", ""));
+	char j[200] = "{}";
+	
+    //json_set(json, "a", "b", "k", "vvvvvvvvvvvv", "");
+    json_set(j, "a", "e", "k", "vvvvvvvvvvvv", "");
+    //json_set(json, "k", "vvvvvvvvvvvv", "");
+    //json_set(json, "m", "n", "k", "vvvvvvvvvvvv", "");
 
     //if(t.start!=0 && t.end!=0)
         //printf("eeee%.*s\n", t.end-t.start, json + t.start);
